@@ -14,6 +14,7 @@ import {
   DEFAULT_CONTACTS,
 } from "./seed";
 import { IMAGE_DATA } from "./image-data";
+import { ENT_IMG } from "./ent-images";
 
 // ---------------------------------------------------------------------------
 // Images embarquées : chaque fichier de public/ est aussi seedé dans la table
@@ -28,6 +29,10 @@ function mediaIdFor(path: string): string {
 const PATH_TO_MEDIA_URL: Record<string, string> = {};
 for (const path of Object.keys(IMAGE_DATA)) {
   PATH_TO_MEDIA_URL[path] = `/api/media/${mediaIdFor(path)}`;
+}
+
+export function entUrl(path: string): string {
+  return ENT_IMG[path] ?? mediaUrl(path);
 }
 
 export function mediaUrl(path: string): string {
@@ -91,6 +96,10 @@ CREATE TABLE IF NOT EXISTS "topics" ("id" integer GENERATED ALWAYS AS IDENTITY P
 CREATE TABLE IF NOT EXISTS "contacts" ("id" integer GENERATED ALWAYS AS IDENTITY PRIMARY KEY, "label" text NOT NULL, "person" text NOT NULL DEFAULT '', "description" text NOT NULL DEFAULT '', "email" text NOT NULL DEFAULT '', "phone" text NOT NULL DEFAULT '', "order" integer NOT NULL DEFAULT 0);
 CREATE TABLE IF NOT EXISTS "messages" ("id" integer GENERATED ALWAYS AS IDENTITY PRIMARY KEY, "name" text NOT NULL, "email" text NOT NULL, "phone" text NOT NULL DEFAULT '', "subject" text NOT NULL DEFAULT '', "message" text NOT NULL, "read" boolean NOT NULL DEFAULT false, "created_at" timestamptz NOT NULL DEFAULT now());
 CREATE TABLE IF NOT EXISTS "media" ("id" text PRIMARY KEY, "name" text NOT NULL, "mime" text NOT NULL, "size" integer NOT NULL, "data" bytea NOT NULL, "created_at" timestamptz NOT NULL DEFAULT now());
+;
+ALTER TABLE "enterprises" ADD COLUMN IF NOT EXISTS "photo" text NOT NULL DEFAULT '';
+ALTER TABLE "enterprises" ADD COLUMN IF NOT EXISTS "photo_contain" boolean NOT NULL DEFAULT false;
+ALTER TABLE "enterprises" ADD COLUMN IF NOT EXISTS "logos" jsonb NOT NULL DEFAULT '[]'::jsonb;
 `;
 
 async function ensureSchema(): Promise<void> {
@@ -217,21 +226,52 @@ async function seedAll(tx: Tx): Promise<void> {
   }
 }
 
-export async function ensureSeeded(): Promise<void> {
+// Version du seed : à chaque changement de version, le contenu est re-seeding
+// (tables de contenu vidées puis réinsérées, médias embarqués upsertés).
+// Évite qu'un ancien déploiement laisse un contenu périmé (ex : anciennes
+// URLs d'images /images/... au lieu de /api/media/...).
+const SEED_VERSION = "v4";
+
+async function doEnsureSeeded(): Promise<void> {
   try {
     await ensureSchema();
     await db.transaction(async (tx) => {
       await tx.execute(sql`select pg_advisory_xact_lock(${SEED_LOCK})`);
-      const rows = await tx.select({ key: schema.kv.key }).from(schema.kv).where(eq(schema.kv.key, "seeded"));
-      if (rows.length === 0) {
+      const rows = await tx
+        .select({ key: schema.kv.key, value: schema.kv.value })
+        .from(schema.kv)
+        .where(eq(schema.kv.key, "seeded"));
+      const version = (rows[0]?.value as { version?: string } | undefined)?.version;
+      if (version !== SEED_VERSION) {
+        // re-seed complet (messages, médias et kv conservés)
+        await tx.delete(schema.pages);
+        await tx.delete(schema.photos);
+        await tx.delete(schema.albums);
+        await tx.delete(schema.missions);
+        await tx.delete(schema.enterprises);
+        await tx.delete(schema.reviews);
+        await tx.delete(schema.topics);
+        await tx.delete(schema.contacts);
+        await tx.delete(schema.settings);
         await seedAll(tx);
-        await tx.insert(schema.kv).values({ key: "seeded", value: { at: new Date().toISOString() } });
-        console.log("[content] seed initial appliqué");
+        const value = { version: SEED_VERSION, at: new Date().toISOString() };
+        await tx
+          .insert(schema.kv)
+          .values({ key: "seeded", value })
+          .onConflictDoUpdate({ target: schema.kv.key, set: { value, updatedAt: new Date() } });
+        console.log(`[content] seed ${SEED_VERSION} appliqué (re-seed)`);
       }
     });
   } catch (err) {
     console.warn("[content] ensureSeeded a échoué (la base est peut-être indisponible) :", err);
   }
+}
+
+// Exécuté une seule fois par processus (évite un DDL à chaque requête).
+let seededOnce: Promise<void> | null = null;
+export function ensureSeeded(): Promise<void> {
+  if (!seededOnce) seededOnce = doEnsureSeeded();
+  return seededOnce;
 }
 
 async function safe<T>(fn: () => Promise<T>, fallback: T): Promise<T> {
