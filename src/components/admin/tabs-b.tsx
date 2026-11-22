@@ -262,20 +262,38 @@ export function EnterprisesTab({ enterprises, onChange }: { enterprises: Enterpr
       {enterprises.map((e, i) => (
         <ItemCard key={e.id} title={e.name || `Entreprise ${i + 1}`} onRemove={() => onChange(enterprises.filter((_, j) => j !== i))} onUp={() => move(i, -1)} onDown={() => move(i, 1)}>
           <div className="admin-grid-2">
-            <F label="Nom"><In value={e.name} onChange={(ev) => set(i, { name: ev.target.value })} /></F>
+            <F label="Nom (\n = retour à la ligne)"><In value={e.name} onChange={(ev) => set(i, { name: ev.target.value })} /></F>
             <F label="Rôle / accroche"><In value={e.tagline} onChange={(ev) => set(i, { tagline: ev.target.value })} /></F>
             <F label="Lieu"><In value={e.location} onChange={(ev) => set(i, { location: ev.target.value })} /></F>
             <div className="field">
               <span className="field-label">Mise en avant</span>
               <Switch label="Mettre en avant (bordure accentuée)" checked={e.highlight} onChange={(v) => set(i, { highlight: v })} />
             </div>
+            <div className="field">
+              <span className="field-label">Photo « contain » (logo sur fond blanc)</span>
+              <Switch label="Afficher la photo en mode contain" checked={e.photoContain} onChange={(v) => set(i, { photoContain: v })} />
+            </div>
           </div>
+          <MediaField label="Photo de la carte" value={e.photo} onChange={(v) => set(i, { photo: v })} />
+          <F label="Logos affichés sur la carte (un par ligne)">
+            <StrList
+              items={e.logos}
+              onChange={(logos) => set(i, { logos })}
+              placeholder="/images/ent/… ou /api/media/…"
+              addLabel="Ajouter un logo"
+            />
+          </F>
         </ItemCard>
       ))}
       <button
         type="button"
         className="btn-add"
-        onClick={() => onChange([...enterprises, { id: -Date.now(), name: "Nouvelle structure", tagline: "", location: "", highlight: false, order: enterprises.length }])}
+        onClick={() =>
+          onChange([
+            ...enterprises,
+            { id: -Date.now(), name: "Nouvelle structure", tagline: "", location: "", photo: "", photoContain: false, logos: [], highlight: false, order: enterprises.length },
+          ])
+        }
       >
         + Ajouter une entreprise
       </button>

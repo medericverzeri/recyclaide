@@ -150,6 +150,9 @@ export interface EnterpriseData {
   name: string;
   tagline: string;
   location: string;
+  photo: string;
+  photoContain: boolean;
+  logos: string[];
   highlight: boolean;
   order: number;
 }

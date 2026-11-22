@@ -74,6 +74,9 @@ export const enterprises = pgTable("enterprises", {
   name: text("name").notNull(),
   tagline: text("tagline").notNull().default(""),
   location: text("location").notNull().default(""),
+  photo: text("photo").notNull().default(""),
+  photoContain: boolean("photo_contain").notNull().default(false),
+  logos: jsonb("logos").$type<string[]>().notNull().default([]),
   highlight: boolean("highlight").notNull().default(false),
   order: integer("order").notNull().default(0),
 });

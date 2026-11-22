@@ -109,7 +109,16 @@ async function seedAll(tx: Tx): Promise<void> {
   for (const [i, e] of DEFAULT_ENTERPRISES.entries()) {
     await tx
       .insert(schema.enterprises)
-      .values({ name: e.name, tagline: e.tagline, location: e.location, highlight: e.highlight, order: i })
+      .values({
+        name: e.name,
+        tagline: e.tagline,
+        location: e.location,
+        photo: e.photo,
+        photoContain: e.photoContain,
+        logos: e.logos,
+        highlight: e.highlight,
+        order: i,
+      })
       .onConflictDoNothing();
   }
 
@@ -251,9 +260,19 @@ export async function getEnterprises(): Promise<EnterpriseData[]> {
   return safe(
     async () =>
       (await db.select().from(schema.enterprises).orderBy(asc(schema.enterprises.order), asc(schema.enterprises.id))).map(
-        (r): EnterpriseData => ({ id: r.id, name: r.name, tagline: r.tagline, location: r.location, highlight: r.highlight, order: r.order })
+        (r): EnterpriseData => ({
+          id: r.id,
+          name: r.name,
+          tagline: r.tagline,
+          location: r.location,
+          photo: r.photo,
+          photoContain: r.photoContain,
+          logos: r.logos,
+          highlight: r.highlight,
+          order: r.order,
+        })
       ),
-    DEFAULT_ENTERPRISES.map((e, i) => ({ ...e, id: i + 1, order: i }))
+    DEFAULT_ENTERPRISES.map((e, i) => ({ ...e, id: i + 1, order: i }) as EnterpriseData)
   );
 }
 
@@ -434,7 +453,16 @@ export async function saveAllContent(input: SaveInput): Promise<AdminContent> {
     if (input.enterprises) {
       await tx.delete(schema.enterprises);
       for (const [i, e] of input.enterprises.entries()) {
-        await tx.insert(schema.enterprises).values({ name: e.name, tagline: e.tagline ?? "", location: e.location ?? "", highlight: !!e.highlight, order: e.order ?? i });
+        await tx.insert(schema.enterprises).values({
+          name: e.name,
+          tagline: e.tagline ?? "",
+          location: e.location ?? "",
+          photo: e.photo ?? "",
+          photoContain: !!e.photoContain,
+          logos: e.logos ?? [],
+          highlight: !!e.highlight,
+          order: e.order ?? i,
+        });
       }
     }
     if (input.reviews) {

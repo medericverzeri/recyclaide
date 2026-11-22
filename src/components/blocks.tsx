@@ -5,6 +5,7 @@ import { TopicsAccordion, ContactIntro } from "./topics";
 import { ContactCards, ExternalSiteCard } from "./contacts";
 import { Gallery } from "./gallery";
 import { ContactForm } from "./contact-form";
+import { CompanyCarousel } from "./company-carousel";
 
 // Rendu des blocs d'une page (contenu éditable depuis l'admin).
 export function BlockRenderer({ block, bundle }: { block: PageBlock; bundle: SiteBundle }) {
@@ -132,18 +133,12 @@ export function BlockRenderer({ block, bundle }: { block: PageBlock; bundle: Sit
       );
     case "enterprises":
       return (
-        <div className="mb-4">
-          <div className="grid-3">
-            {enterprises.map((e) => (
-              <article className={`company-card ${e.highlight ? "company-card--highlight" : ""}`} key={e.id}>
-                {e.highlight && <span className="company-flag">Notre structure</span>}
-                <h3>{e.name}</h3>
-                <span className="tagline">{e.tagline}</span>
-                {e.location && <span className="loc">{e.location}</span>}
-              </article>
-            ))}
-          </div>
-        </div>
+        <CompanyCarousel
+          enterprises={enterprises}
+          groupLogo="/images/ent/groupe-mes-logo.webp"
+          kicker={block.title}
+          intro={block.intro}
+        />
       );
     case "form":
       return (

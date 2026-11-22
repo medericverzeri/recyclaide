@@ -1008,51 +1008,206 @@ h1, h2, h3, h4 {
   font-size: 0.9rem;
 }
 
-/* ------------------------------- Entreprises ----------------------------- */
+/* ------------------------------- Entreprises (carrousel, comme la référence) --- */
 
+.mes-group-intro {
+  border: 1px solid color-mix(in srgb, var(--brand) 18%, var(--line));
+  background: linear-gradient(135deg, var(--card), color-mix(in srgb, var(--brand-soft) 45%, var(--card)));
+  border-radius: 24px;
+  grid-template-columns: 150px minmax(0, 1fr);
+  align-items: center;
+  gap: clamp(1rem, 3vw, 2rem);
+  margin-bottom: clamp(1.6rem, 3vw, 2.5rem);
+  padding: clamp(1rem, 2.4vw, 1.6rem);
+  display: grid;
+  box-shadow: 0 16px 40px -32px #0d1b2a3d;
+}
+.mes-group-intro p {
+  color: var(--muted);
+  max-width: 70ch;
+  font-size: 0.93rem;
+  line-height: 1.65;
+  margin: 0;
+}
+.mes-group-logo {
+  border: 1px solid var(--line);
+  background: #fff;
+  border-radius: 16px;
+  place-items: center;
+  min-height: 118px;
+  padding: 0.55rem;
+  display: grid;
+}
+.mes-group-logo img {
+  object-fit: contain;
+  width: 100%;
+  max-width: 128px;
+  max-height: 130px;
+}
+.mes-group-kicker {
+  font-family: var(--font-display), sans-serif;
+  letter-spacing: -0.035em;
+  color: var(--brand-deep);
+  margin-bottom: 0.45rem;
+  font-size: clamp(1.25rem, 2.4vw, 1.7rem);
+  font-weight: 800;
+  display: block;
+}
+@media (max-width: 640px) {
+  .mes-group-intro {
+    grid-template-columns: 92px minmax(0, 1fr);
+    gap: 1rem;
+    padding: 0.9rem;
+  }
+  .mes-group-intro p { font-size: 0.82rem; }
+  .mes-group-logo { min-height: 96px; }
+  .mes-group-logo img { max-width: 80px; max-height: 100px; }
+}
+
+.company-carousel { position: relative; }
+.company-window { touch-action: pan-y; overflow: hidden; }
+.company-track {
+  transition: transform 0.55s cubic-bezier(0.2, 0.8, 0.2, 1);
+  display: flex;
+}
+.company-slide {
+  flex: 0 0 100%;
+  align-items: stretch;
+  gap: 1.4rem;
+  padding: 2px 2px 8px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+@media (max-width: 1023px) {
+  .company-slide { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 639px) {
+  .company-slide { grid-template-columns: 1fr; }
+}
 .company-card {
   background: var(--card);
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  padding: 1.25rem 1.3rem;
-  box-shadow: var(--shadow-sm);
-  display: flex;
+  color: inherit;
+  border: 1px solid color-mix(in srgb, var(--ink) 9%, transparent);
+  border-radius: 26px;
+  text-decoration: none;
   flex-direction: column;
-  gap: 0.35rem;
+  display: flex;
+  overflow: hidden;
+  transition: box-shadow 0.2s, transform 0.2s;
+}
+.company-card:hover {
+  box-shadow: 0 24px 46px -28px color-mix(in srgb, var(--brand-deep) 70%, transparent);
+  transform: translateY(-3px);
 }
 .company-card--highlight {
   border-color: var(--accent);
   box-shadow: 0 0 0 3px var(--accent-soft);
 }
-.company-card h3 {
-  margin: 0;
-  font-size: 1.05rem;
+.company-photo {
+  background: var(--brand-soft);
+  height: 290px;
+  position: relative;
+  overflow: hidden;
 }
-.company-card .tagline {
-  color: var(--muted);
-  font-size: 0.9rem;
+.company-photo > img {
+  object-fit: cover;
+  width: 100%;
+  height: 100%;
+  transition: transform 0.6s;
 }
-.company-card .loc {
-  margin-top: auto;
-  font-size: 0.78rem;
-  font-weight: 700;
-  color: var(--accent-ink);
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
+.company-card:hover .company-photo > img { transform: scale(1.035); }
+.company-photo--contain > img {
+  object-fit: contain;
+  background: #fff;
+  padding: 2rem;
 }
-.company-flag {
-  display: inline-block;
-  font-size: 0.68rem;
+.company-photo-fallback {
+  height: 100%;
+  color: var(--brand-deep);
+  place-items: center;
+  font-size: 3rem;
   font-weight: 800;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  background: var(--accent);
-  color: #fff;
-  border-radius: 999px;
-  padding: 0.2rem 0.6rem;
-  margin-bottom: 0.4rem;
-  width: fit-content;
+  display: grid;
 }
+@media (max-width: 639px) {
+  .company-photo { height: 240px; }
+}
+.company-open {
+  color: #0b1220;
+  background: rgba(255, 255, 255, 0.88);
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  border-radius: 50%;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  display: grid;
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+}
+.company-open svg { width: 17px; height: 17px; }
+.company-info {
+  flex: 1;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.8rem;
+  min-height: 112px;
+  padding: 1.25rem 1.2rem;
+  display: flex;
+}
+.company-info h3 {
+  letter-spacing: -0.03em;
+  white-space: pre-line;
+  font-size: 1.02rem;
+  font-weight: 700;
+  line-height: 1.4;
+  margin: 0;
+}
+.company-info p {
+  max-width: 240px;
+  color: var(--muted);
+  margin-top: 0.4rem;
+  font-size: 0.78rem;
+  line-height: 1.5;
+}
+.company-logos {
+  flex: 0 0 68px;
+  justify-items: center;
+  gap: 4px;
+  display: grid;
+}
+.company-logos img {
+  object-fit: contain;
+  width: 64px;
+  max-height: 64px;
+}
+.company-logos img + img { max-height: 38px; }
+
+.carousel-footer {
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 1.4rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.8rem;
+}
+.pagination-dots { gap: 4px; display: flex; flex-wrap: wrap; max-width: 100%; }
+.pagination-dots button { cursor: pointer; background: 0 0; border: none; padding: 10px 4px; }
+.pagination-dots span {
+  background: color-mix(in srgb, var(--muted) 35%, transparent);
+  border-radius: 99px;
+  width: 7px;
+  height: 7px;
+  display: block;
+  transition: width 0.25s, background 0.25s;
+}
+.pagination-dots .active span {
+  background: var(--brand);
+  width: 26px;
+}
+.carousel-actions { align-items: center; gap: 0.6rem; display: flex; margin-left: auto; }
+.page-fraction { margin-right: 0.8rem; font-size: 0.8rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+.page-fraction i { color: var(--muted); margin: 0 0.6rem; font-style: normal; }
 
 /* ------------------------------- Missions -------------------------------- */
 
