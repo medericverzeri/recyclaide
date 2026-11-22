@@ -6,6 +6,7 @@ import { ContactCards, ExternalSiteCard } from "./contacts";
 import { Gallery } from "./gallery";
 import { ContactForm } from "./contact-form";
 import { CompanyCarousel } from "./company-carousel";
+import { mediaUrl } from "@/lib/content";
 
 // Rendu des blocs d'une page (contenu éditable depuis l'admin).
 export function BlockRenderer({ block, bundle }: { block: PageBlock; bundle: SiteBundle }) {
@@ -135,7 +136,7 @@ export function BlockRenderer({ block, bundle }: { block: PageBlock; bundle: Sit
       return (
         <CompanyCarousel
           enterprises={enterprises}
-          groupLogo="/images/ent/groupe-mes-logo.webp"
+          groupLogo={mediaUrl("/images/ent/groupe-mes-logo.webp")}
           kicker={block.title}
           intro={block.intro}
         />

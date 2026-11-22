@@ -13,6 +13,45 @@ import {
   DEFAULT_TOPICS,
   DEFAULT_CONTACTS,
 } from "./seed";
+import { IMAGE_DATA } from "./image-data";
+
+// ---------------------------------------------------------------------------
+// Images embarquées : chaque fichier de public/ est aussi seedé dans la table
+// `media` et servi via /api/media/[id] — comme ça les images s'affichent en
+// ligne (Vercel + Neon) même si les fichiers statiques ne sont pas déployés.
+// ---------------------------------------------------------------------------
+
+function mediaIdFor(path: string): string {
+  return "img" + path.replace(/[^a-zA-Z0-9]/g, "_");
+}
+
+const PATH_TO_MEDIA_URL: Record<string, string> = {};
+for (const path of Object.keys(IMAGE_DATA)) {
+  PATH_TO_MEDIA_URL[path] = `/api/media/${mediaIdFor(path)}`;
+}
+
+export function mediaUrl(path: string): string {
+  return PATH_TO_MEDIA_URL[path] ?? path;
+}
+
+function remapPaths<T>(obj: T): T {
+  let json = JSON.stringify(obj);
+  for (const [path, url] of Object.entries(PATH_TO_MEDIA_URL)) {
+    json = json.split(JSON.stringify(path)).join(JSON.stringify(url));
+  }
+  return JSON.parse(json);
+}
+
+const SEED_SETTINGS = remapPaths(DEFAULT_SETTINGS);
+const SEED_PAGES = remapPaths(DEFAULT_PAGES);
+const SEED_MISSIONS = remapPaths(DEFAULT_MISSIONS);
+const SEED_ALBUMS = remapPaths(DEFAULT_ALBUMS);
+const SEED_PHOTOS = remapPaths(DEFAULT_PHOTOS);
+const SEED_ENTERPRISES = remapPaths(DEFAULT_ENTERPRISES);
+const SEED_REVIEWS = remapPaths(DEFAULT_REVIEWS);
+const SEED_TOPICS = remapPaths(DEFAULT_TOPICS);
+const SEED_CONTACTS = remapPaths(DEFAULT_CONTACTS);
+
 import type {
   AdminContent,
   Album,
@@ -61,19 +100,28 @@ async function ensureSchema(): Promise<void> {
 type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
 async function seedAll(tx: Tx): Promise<void> {
+  // 1) médias embarqués -> table media (idempotent)
+  for (const [path, img] of Object.entries(IMAGE_DATA)) {
+    const buf = Buffer.from(img.data, "base64");
+    await tx
+      .insert(schema.media)
+      .values({ id: mediaIdFor(path), name: path.split("/").pop() ?? path, mime: img.mime, size: buf.length, data: buf })
+      .onConflictDoNothing();
+  }
+  // 2) contenu avec URLs /api/media/...
   await tx
     .insert(schema.settings)
-    .values({ id: 1, data: DEFAULT_SETTINGS })
+    .values({ id: 1, data: SEED_SETTINGS })
     .onConflictDoNothing();
 
-  for (const p of DEFAULT_PAGES) {
+  for (const p of SEED_PAGES) {
     await tx
       .insert(schema.pages)
       .values({ slug: p.slug, eyebrow: p.eyebrow, title: p.title, lead: p.lead, blocks: p.blocks })
       .onConflictDoNothing();
   }
 
-  for (const [i, m] of DEFAULT_MISSIONS.entries()) {
+  for (const [i, m] of SEED_MISSIONS.entries()) {
     await tx
       .insert(schema.missions)
       .values({
@@ -88,7 +136,7 @@ async function seedAll(tx: Tx): Promise<void> {
       .onConflictDoNothing();
   }
 
-  for (const [i, a] of DEFAULT_ALBUMS.entries()) {
+  for (const [i, a] of SEED_ALBUMS.entries()) {
     await tx
       .insert(schema.albums)
       .values({ title: a.title, slug: a.slug, description: a.description, order: i })
@@ -97,7 +145,7 @@ async function seedAll(tx: Tx): Promise<void> {
 
   const albumRows = await tx.select({ id: schema.albums.id, slug: schema.albums.slug }).from(schema.albums);
   const albumBySlug = new Map(albumRows.map((r) => [r.slug, r.id]));
-  for (const p of DEFAULT_PHOTOS) {
+  for (const p of SEED_PHOTOS) {
     const albumId = albumBySlug.get(p.albumSlug);
     if (!albumId) continue;
     await tx
@@ -106,7 +154,7 @@ async function seedAll(tx: Tx): Promise<void> {
       .onConflictDoNothing();
   }
 
-  for (const [i, e] of DEFAULT_ENTERPRISES.entries()) {
+  for (const [i, e] of SEED_ENTERPRISES.entries()) {
     await tx
       .insert(schema.enterprises)
       .values({
@@ -122,7 +170,7 @@ async function seedAll(tx: Tx): Promise<void> {
       .onConflictDoNothing();
   }
 
-  for (const [i, r] of DEFAULT_REVIEWS.entries()) {
+  for (const [i, r] of SEED_REVIEWS.entries()) {
     await tx
       .insert(schema.reviews)
       .values({
@@ -140,7 +188,7 @@ async function seedAll(tx: Tx): Promise<void> {
       .onConflictDoNothing();
   }
 
-  for (const [i, t] of DEFAULT_TOPICS.entries()) {
+  for (const [i, t] of SEED_TOPICS.entries()) {
     await tx
       .insert(schema.topics)
       .values({
@@ -161,7 +209,7 @@ async function seedAll(tx: Tx): Promise<void> {
       .onConflictDoNothing();
   }
 
-  for (const [i, c] of DEFAULT_CONTACTS.entries()) {
+  for (const [i, c] of SEED_CONTACTS.entries()) {
     await tx
       .insert(schema.contacts)
       .values({ label: c.label, person: c.person, description: c.description, email: c.email, phone: c.phone, order: i })
@@ -199,8 +247,8 @@ export async function getSettings(): Promise<SettingsData> {
   await ensureSeeded();
   return safe(async () => {
     const rows = await db.select().from(schema.settings).where(eq(schema.settings.id, 1)).limit(1);
-    return rows[0]?.data ?? DEFAULT_SETTINGS;
-  }, DEFAULT_SETTINGS);
+    return rows[0]?.data ?? SEED_SETTINGS;
+  }, SEED_SETTINGS);
 }
 
 export async function getPages(): Promise<PageRow[]> {
@@ -214,7 +262,7 @@ export async function getPages(): Promise<PageRow[]> {
         lead: r.lead,
         blocks: r.blocks,
       })),
-    DEFAULT_PAGES
+    SEED_PAGES
   );
 }
 
@@ -234,7 +282,7 @@ export async function getMissions(publishedOnly = false): Promise<Mission[]> {
         order: r.order,
         data: r.data,
       }));
-  }, DEFAULT_MISSIONS.map((m, i) => ({ ...m, id: i + 1, published: true, order: i })));
+  }, SEED_MISSIONS.map((m, i) => ({ ...m, id: i + 1, published: true, order: i })));
 }
 
 export async function getAlbums(): Promise<Album[]> {
@@ -252,7 +300,7 @@ export async function getAlbums(): Promise<Album[]> {
         .filter((p) => p.albumId === a.id)
         .map((p): Photo => ({ id: p.id, src: p.src, alt: p.alt, caption: p.caption, order: p.order })),
     }));
-  }, DEFAULT_ALBUMS.map((a, i) => ({ ...a, id: i + 1, photos: DEFAULT_PHOTOS.filter((p) => p.albumSlug === a.slug).map((p, j) => ({ id: j + 1, src: p.src, alt: p.alt, caption: p.caption, order: p.order })) })));
+  }, SEED_ALBUMS.map((a, i) => ({ ...a, id: i + 1, photos: SEED_PHOTOS.filter((p) => p.albumSlug === a.slug).map((p, j) => ({ id: j + 1, src: p.src, alt: p.alt, caption: p.caption, order: p.order })) })));
 }
 
 export async function getEnterprises(): Promise<EnterpriseData[]> {
@@ -272,7 +320,7 @@ export async function getEnterprises(): Promise<EnterpriseData[]> {
           order: r.order,
         })
       ),
-    DEFAULT_ENTERPRISES.map((e, i) => ({ ...e, id: i + 1, order: i }) as EnterpriseData)
+    SEED_ENTERPRISES.map((e, i) => ({ ...e, id: i + 1, order: i }) as EnterpriseData)
   );
 }
 
@@ -295,7 +343,7 @@ export async function getReviews(): Promise<ReviewData[]> {
           order: r.order,
         })
       ),
-    DEFAULT_REVIEWS.map((r, i) => ({ ...r, id: i + 1, order: i }))
+    SEED_REVIEWS.map((r, i) => ({ ...r, id: i + 1, order: i }))
   );
 }
 
@@ -321,7 +369,7 @@ export async function getTopics(): Promise<TopicData[]> {
           order: r.order,
         })
       ),
-    DEFAULT_TOPICS.map((t, i) => ({ ...t, id: i + 1, order: i }))
+    SEED_TOPICS.map((t, i) => ({ ...t, id: i + 1, order: i }))
   );
 }
 
@@ -332,7 +380,7 @@ export async function getContacts(): Promise<ContactCardData[]> {
       (await db.select().from(schema.contacts).orderBy(asc(schema.contacts.order), asc(schema.contacts.id))).map(
         (r): ContactCardData => ({ id: r.id, label: r.label, person: r.person, description: r.description, email: r.email, phone: r.phone, order: r.order })
       ),
-    DEFAULT_CONTACTS.map((c, i) => ({ ...c, id: i + 1, order: i }))
+    SEED_CONTACTS.map((c, i) => ({ ...c, id: i + 1, order: i }))
   );
 }
 
