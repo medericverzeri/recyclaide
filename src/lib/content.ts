@@ -12,6 +12,7 @@ import {
   DEFAULT_REVIEWS,
   DEFAULT_TOPICS,
   DEFAULT_CONTACTS,
+  DEFAULT_EMPLOYEES,
 } from "./seed";
 import { IMAGE_DATA } from "./image-data";
 import { ENT_IMG } from "./ent-images";
@@ -56,6 +57,7 @@ const SEED_ENTERPRISES = remapPaths(DEFAULT_ENTERPRISES);
 const SEED_REVIEWS = remapPaths(DEFAULT_REVIEWS);
 const SEED_TOPICS = remapPaths(DEFAULT_TOPICS);
 const SEED_CONTACTS = remapPaths(DEFAULT_CONTACTS);
+const SEED_EMPLOYEES = remapPaths(DEFAULT_EMPLOYEES);
 
 import type {
   AdminContent,
@@ -71,6 +73,7 @@ import type {
   SiteBundle,
   TopicData,
   ContactCardData,
+  Employee,
 } from "./types";
 
 // ---------------------------------------------------------------------------
@@ -95,6 +98,7 @@ CREATE TABLE IF NOT EXISTS "reviews" ("id" integer GENERATED ALWAYS AS IDENTITY 
 CREATE TABLE IF NOT EXISTS "topics" ("id" integer GENERATED ALWAYS AS IDENTITY PRIMARY KEY, "icon" text NOT NULL DEFAULT '✦', "title" text NOT NULL, "kicker" text NOT NULL DEFAULT '', "heading" text NOT NULL DEFAULT '', "intro" text NOT NULL DEFAULT '', "steps" jsonb NOT NULL DEFAULT '[]'::jsonb, "warning_title" text NOT NULL DEFAULT '', "warning_text" text NOT NULL DEFAULT '', "cta_label" text NOT NULL DEFAULT '', "cta_href" text NOT NULL DEFAULT '', "cta_note" text NOT NULL DEFAULT '', "mailto_subject" text NOT NULL DEFAULT '', "order" integer NOT NULL DEFAULT 0);
 CREATE TABLE IF NOT EXISTS "contacts" ("id" integer GENERATED ALWAYS AS IDENTITY PRIMARY KEY, "label" text NOT NULL, "person" text NOT NULL DEFAULT '', "description" text NOT NULL DEFAULT '', "email" text NOT NULL DEFAULT '', "phone" text NOT NULL DEFAULT '', "order" integer NOT NULL DEFAULT 0);
 CREATE TABLE IF NOT EXISTS "messages" ("id" integer GENERATED ALWAYS AS IDENTITY PRIMARY KEY, "name" text NOT NULL, "email" text NOT NULL, "phone" text NOT NULL DEFAULT '', "subject" text NOT NULL DEFAULT '', "message" text NOT NULL, "read" boolean NOT NULL DEFAULT false, "created_at" timestamptz NOT NULL DEFAULT now());
+CREATE TABLE IF NOT EXISTS "employees" ("id" integer GENERATED ALWAYS AS IDENTITY PRIMARY KEY, "ref" text NOT NULL UNIQUE, "nom" text NOT NULL, "prenom" text NOT NULL DEFAULT '', "poste" text NOT NULL DEFAULT '', "valid_until" text NOT NULL DEFAULT '', "photo" text NOT NULL DEFAULT '', "order" integer NOT NULL DEFAULT 0, "created_at" timestamptz NOT NULL DEFAULT now());
 CREATE TABLE IF NOT EXISTS "media" ("id" text PRIMARY KEY, "name" text NOT NULL, "mime" text NOT NULL, "size" integer NOT NULL, "data" bytea NOT NULL, "created_at" timestamptz NOT NULL DEFAULT now());
 ;
 ALTER TABLE "enterprises" ADD COLUMN IF NOT EXISTS "photo" text NOT NULL DEFAULT '';
@@ -218,6 +222,13 @@ async function seedAll(tx: Tx): Promise<void> {
       .onConflictDoNothing();
   }
 
+  for (const [i, e] of SEED_EMPLOYEES.entries()) {
+    await tx
+      .insert(schema.employees)
+      .values({ ref: e.ref, nom: e.nom, prenom: e.prenom, poste: e.poste, validUntil: e.validUntil, photo: e.photo, order: i })
+      .onConflictDoNothing();
+  }
+
   for (const [i, c] of SEED_CONTACTS.entries()) {
     await tx
       .insert(schema.contacts)
@@ -230,7 +241,7 @@ async function seedAll(tx: Tx): Promise<void> {
 // (tables de contenu vidées puis réinsérées, médias embarqués upsertés).
 // Évite qu'un ancien déploiement laisse un contenu périmé (ex : anciennes
 // URLs d'images /images/... au lieu de /api/media/...).
-const SEED_VERSION = "v4";
+const SEED_VERSION = "v5";
 
 async function doEnsureSeeded(): Promise<void> {
   try {
@@ -252,6 +263,7 @@ async function doEnsureSeeded(): Promise<void> {
         await tx.delete(schema.reviews);
         await tx.delete(schema.topics);
         await tx.delete(schema.contacts);
+        await tx.delete(schema.employees);
         await tx.delete(schema.settings);
         await seedAll(tx);
         const value = { version: SEED_VERSION, at: new Date().toISOString() };
@@ -442,6 +454,36 @@ export async function getSiteBundle(): Promise<SiteBundle> {
 
 // ------------------------------ ADMIN --------------------------------------
 
+export async function getEmployees(): Promise<Employee[]> {
+  await ensureSeeded();
+  return safe(
+    async () =>
+      (await db.select().from(schema.employees).orderBy(asc(schema.employees.order), asc(schema.employees.id))).map(
+        (r): Employee => ({
+          id: r.id,
+          ref: r.ref,
+          nom: r.nom,
+          prenom: r.prenom,
+          poste: r.poste,
+          validUntil: r.validUntil,
+          photo: r.photo,
+          order: r.order,
+        })
+      ),
+    SEED_EMPLOYEES.map((e, i) => ({ ...e, id: i + 1, order: i }))
+  );
+}
+
+export async function getEmployeeByRef(ref: string): Promise<Employee | null> {
+  await ensureSeeded();
+  return safe(async () => {
+    const rows = await db.select().from(schema.employees).where(eq(schema.employees.ref, ref.toUpperCase().trim())).limit(1);
+    const r = rows[0];
+    if (!r) return null;
+    return { id: r.id, ref: r.ref, nom: r.nom, prenom: r.prenom, poste: r.poste, validUntil: r.validUntil, photo: r.photo, order: r.order };
+  }, null);
+}
+
 export async function getMessages(): Promise<MessageData[]> {
   return safe(
     async () =>
@@ -470,7 +512,7 @@ export async function getMediaList(): Promise<MediaItem[]> {
 }
 
 export async function getAllContent(): Promise<AdminContent> {
-  const [settings, pages, missions, albums, enterprises, reviews, topics, contacts, messages, media] = await Promise.all([
+  const [settings, pages, missions, albums, enterprises, reviews, topics, contacts, messages, media, employees] = await Promise.all([
     getSettings(),
     getPages(),
     getMissions(false),
@@ -481,8 +523,9 @@ export async function getAllContent(): Promise<AdminContent> {
     getContacts(),
     getMessages(),
     getMediaList(),
+    getEmployees(),
   ]);
-  return { settings, pages, missions, albums, enterprises, reviews, topics, contacts, messages, media };
+  return { settings, pages, missions, albums, enterprises, reviews, topics, contacts, messages, media, employees };
 }
 
 function revalidateAll(): void {
@@ -590,6 +633,20 @@ export async function saveAllContent(input: SaveInput): Promise<AdminContent> {
         });
       }
     }
+    if (input.employees) {
+      await tx.delete(schema.employees);
+      for (const [i, e] of input.employees.entries()) {
+        await tx.insert(schema.employees).values({
+          ref: e.ref || `RA-${new Date().getFullYear()}-${String(i + 1).padStart(4, "0")}`,
+          nom: e.nom,
+          prenom: e.prenom ?? "",
+          poste: e.poste ?? "",
+          validUntil: e.validUntil ?? "",
+          photo: e.photo ?? "",
+          order: e.order ?? i,
+        });
+      }
+    }
     if (input.contacts) {
       await tx.delete(schema.contacts);
       for (const [i, c] of input.contacts.entries()) {
@@ -611,6 +668,7 @@ export async function resetToDefaults(): Promise<AdminContent> {
     await tx.delete(schema.reviews);
     await tx.delete(schema.topics);
     await tx.delete(schema.contacts);
+    await tx.delete(schema.employees);
     await tx.delete(schema.settings);
     await seedAll(tx);
   });

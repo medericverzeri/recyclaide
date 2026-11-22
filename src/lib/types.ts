@@ -209,6 +209,17 @@ export interface MessageData {
   createdAt: string;
 }
 
+export interface Employee {
+  id: number;
+  ref: string;
+  nom: string;
+  prenom: string;
+  poste: string;
+  validUntil: string; // "31/12/2026"
+  photo: string; // URL ou "" (avatar à initiales)
+  order: number;
+}
+
 export interface MediaItem {
   id: string;
   name: string;
@@ -229,6 +240,7 @@ export interface AdminContent {
   contacts: ContactCardData[];
   messages: MessageData[];
   media: MediaItem[];
+  employees: Employee[];
 }
 
 export interface SiteBundle {

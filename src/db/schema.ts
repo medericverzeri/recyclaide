@@ -133,6 +133,18 @@ export const messages = pgTable("messages", {
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
+export const employees = pgTable("employees", {
+  id: integer("id").generatedAlwaysAsIdentity().primaryKey(),
+  ref: text("ref").notNull().unique(),
+  nom: text("nom").notNull(),
+  prenom: text("prenom").notNull().default(""),
+  poste: text("poste").notNull().default(""),
+  validUntil: text("valid_until").notNull().default(""),
+  photo: text("photo").notNull().default(""),
+  order: integer("order").notNull().default(0),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
 export const media = pgTable("media", {
   id: text("id").primaryKey(),
   name: text("name").notNull(),

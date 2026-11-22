@@ -12,6 +12,7 @@ import type {
   ReviewData,
   TopicData,
   ContactCardData,
+  Employee,
 } from "./types";
 
 // ---------------------------------------------------------------------------
@@ -554,6 +555,18 @@ export const DEFAULT_ENTERPRISES: Omit<EnterpriseData, "id" | "order">[] = [
     photoContain: true,
     logos: [E("/images/ent/partners/batire_logo.webp")],
     highlight: false,
+  },
+];
+
+// Salariés (cartes identifiantes imprimables depuis l'espace admin)
+export const DEFAULT_EMPLOYEES: Omit<Employee, "id" | "order" | "createdAt">[] = [
+  {
+    ref: "RA-2026-0001",
+    nom: "DUPONT",
+    prenom: "Marie",
+    poste: "Salariée en insertion — Chantier de reconditionnement",
+    validUntil: "31/12/2026",
+    photo: "",
   },
 ];
 

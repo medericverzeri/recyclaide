@@ -6,6 +6,7 @@ import type { AdminContent } from "@/lib/types";
 import { IdentityTab, HoursTab } from "./tabs-a";
 import { ContactTab, ReviewsTab, GalleryTab, EnterprisesTab } from "./tabs-b";
 import { PagesTab, MessagesTab, AppearanceTab } from "./tabs-c";
+import { BadgesTab } from "./tabs-d";
 
 const TABS = [
   "Identité & héro",
@@ -16,6 +17,7 @@ const TABS = [
   "Entreprises",
   "Pages & missions",
   "Messages",
+  "Cartes salariés",
   "Apparence & SEO",
 ] as const;
 
@@ -118,6 +120,9 @@ export function AdminApp({ initial, email }: { initial: AdminContent; email: str
           {tab === "Entreprises" && <EnterprisesTab enterprises={content.enterprises} onChange={(enterprises) => update({ enterprises })} />}
           {tab === "Pages & missions" && <PagesTab pages={content.pages} missions={content.missions} onPages={(pages) => update({ pages })} onMissions={(missions) => update({ missions })} />}
           {tab === "Messages" && <MessagesTab messages={content.messages} onChanged={(messages) => update({ messages })} />}
+          {tab === "Cartes salariés" && (
+            <BadgesTab employees={content.employees} settings={content.settings} onChange={(employees) => update({ employees })} />
+          )}
           {tab === "Apparence & SEO" && <AppearanceTab settings={content.settings} onChange={(s) => update({ settings: s })} onReset={resetAll} />}
         </div>
       </div>
