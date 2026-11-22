@@ -32,7 +32,7 @@ export function BadgesTab({
         Renseignez <strong>nom et prénom</strong>, prévisualisez la carte, puis imprimez (planche A4 de 9 cartes).
       </p>
       <div className="mb-3 flex gap-2 flex-wrap">
-        <a className="btn btn-primary btn-sm" href="/admin/cartes/imprimer" target="_blank" rel="noopener">
+        <a className="btn btn-primary btn-sm" href="/impression-cartes" target="_blank" rel="noopener">
           🖨 Imprimer toutes les cartes (A4)
         </a>
         <span className="muted text-sm" style={{ alignSelf: "center" }}>{employees.length} salarié(s) enregistré(s)</span>
@@ -72,7 +72,7 @@ export function BadgesTab({
               </div>
             </div>
             <div className="flex flex-col gap-2 mt-2">
-              <a className="btn btn-ghost btn-sm" href={`/admin/cartes/imprimer?ref=${encodeURIComponent(e.ref)}`} target="_blank" rel="noopener">
+              <a className="btn btn-ghost btn-sm" href={`/impression-cartes?ref=${encodeURIComponent(e.ref)}`} target="_blank" rel="noopener">
                 🖨 Imprimer cette carte
               </a>
               <a className="btn btn-ghost btn-sm" href={`/verif/${encodeURIComponent(e.ref)}`} target="_blank" rel="noopener">
